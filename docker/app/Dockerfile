@@ -10,6 +10,7 @@ USER vscode
 WORKDIR /home/vscode/workspace
 
 # Must be installed under user
+RUN rustup component add rustfmt
 RUN cargo install cargo-edit
 
 CMD ["sleep", "infinity"]
