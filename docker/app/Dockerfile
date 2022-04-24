@@ -2,6 +2,7 @@ FROM rust:1.60
 
 RUN apt-get update
 RUN apt-get install -y xvfb
+RUN apt-get install -y docker.io
 
 ARG UID
 ARG GID

@@ -8,6 +8,21 @@ services:
       args:
         - UID=$UID
         - GID=$GID
+    environment:
+      DOCKER_HOST: "tcp://docker:2376"
+      DOCKER_TLS_VERIFY: "1"
+      DOCKER_CERT_PATH: "/docker/certs/client"
+    depends_on:
+      - docker
     volumes:
       - .:/home/vscode/workspace
       - ./cache/cargo-registry:/usr/local/cargo/registry
+      - ./docker/certs:/docker/certs
+
+  docker:
+    image: docker:20.10.9-dind
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: "/docker/certs"
+    volumes:
+      - ./docker/certs:/docker/certs
