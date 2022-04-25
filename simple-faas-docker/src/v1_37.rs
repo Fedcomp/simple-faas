@@ -89,4 +89,23 @@ impl Container {
         // TODO: Check body
         Ok(())
     }
+
+    /// Wait for container to stop
+    pub async fn wait(&self) -> anyhow::Result<()> {
+        let url = format!("{}/containers/{}/wait", self.client.host(), self.id);
+        let client = reqwest::Client::new();
+        let response = client
+            .post(url)
+            .header("Content-Type", "application/json")
+            .send()
+            .await?;
+
+        let status = response.status();
+        if status != 200 {
+            bail!("Failed to wait for container: {} ({})", response.text().await?, status);
+        }
+
+        // TODO: Check body
+        Ok(())
+    }
 }

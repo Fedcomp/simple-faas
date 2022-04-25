@@ -25,5 +25,6 @@ async fn main() -> anyhow::Result<()> {
     };
     let container = api.containers().create(container_create_opts).await?;
     container.start().await?;
+    container.wait().await?;
     Ok(())
 }
