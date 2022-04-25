@@ -17,10 +17,12 @@ async fn main() -> anyhow::Result<()> {
     let config: Config = serde_yaml::from_reader(config_reader)?;
     debug!("Loaded {} function(s) from config", config.functions.len());
 
+    let first_function = config.functions.iter().next().expect("No functions were loaded").1;
+
     let client = DockerClient::new(config.docker_host);
     let api = DockerApi::new(client);
     let container_create_opts = ContainerCreateArgs {
-        Image: "hello-world".into(),
+        Image: first_function.image.clone(),
         Cmd: None,
     };
     let container = api.containers().create(container_create_opts).await?;
