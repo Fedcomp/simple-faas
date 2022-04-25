@@ -108,4 +108,23 @@ impl Container {
         // TODO: Check body
         Ok(())
     }
+
+    /// Wait for container to stop
+    pub async fn delete(&self) -> anyhow::Result<()> {
+        let url = format!("{}/containers/{}", self.client.host(), self.id);
+        let client = reqwest::Client::new();
+        let response = client
+            .delete(url)
+            .header("Content-Type", "application/json")
+            .send()
+            .await?;
+
+        let status = response.status();
+        if status != 204 {
+            bail!("Failed to delete {} container: {} ({})", self.id, response.text().await?, status);
+        }
+
+        // TODO: Check body
+        Ok(())
+    }
 }
