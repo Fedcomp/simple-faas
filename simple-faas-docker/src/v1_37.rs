@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use serde::{Deserialize, Serialize};
 use anyhow::bail;
 use crate::client::Client;
@@ -7,7 +9,7 @@ pub struct Api {
 }
 
 impl Api {
-    pub fn new(client: Client) -> Self {;
+    pub fn new(client: Client) -> Self {
         Api { client }
     }
 
