@@ -70,3 +70,23 @@ pub struct Container {
     id: String,
     client: Client
 }
+
+impl Container {
+    pub async fn start(&self) -> anyhow::Result<()> {
+        let url = format!("{}/containers/{}/start", self.client.host(), self.id);
+        let client = reqwest::Client::new();
+        let response = client
+            .post(url)
+            .header("Content-Type", "application/json")
+            .send()
+            .await?;
+
+        let status = response.status();
+        if status != 204 {
+            bail!("Failed to start container: {} ({})", response.text().await?, status);
+        }
+
+        // TODO: Check body
+        Ok(())
+    }
+}
