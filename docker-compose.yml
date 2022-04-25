@@ -9,9 +9,7 @@ services:
         - UID=$UID
         - GID=$GID
     environment:
-      DOCKER_HOST: "tcp://docker:2376"
-      DOCKER_TLS_VERIFY: "1"
-      DOCKER_CERT_PATH: "/docker/certs/client"
+      DOCKER_HOST: "tcp://docker:2375"
     depends_on:
       - docker
     volumes:
@@ -24,5 +22,6 @@ services:
     privileged: true
     environment:
       DOCKER_TLS_CERTDIR: "/docker/certs"
+    command: ["dockerd", "--host=tcp://0.0.0.0:2375"]
     volumes:
       - ./docker/certs:/docker/certs

@@ -3,6 +3,8 @@ use std::collections::HashMap;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Config {
+    pub version: u64,
+    pub docker_host: String,
     pub functions: HashMap<String, FunctionData>,
 }
 
