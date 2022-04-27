@@ -1,5 +1,6 @@
 version: 1
 docker_host: "http://docker:2375"
+listen_host: "127.0.0.1:8080"
 functions:
   hello-world:
     image: hello-world
