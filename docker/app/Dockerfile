@@ -6,6 +6,7 @@ RUN apt-get install -y docker.io
 
 ARG UID
 ARG GID
+RUN groupadd -g $GID vscode || true
 RUN useradd vscode -u $UID -g $GID -m
 USER vscode
 WORKDIR /home/vscode/workspace
