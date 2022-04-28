@@ -27,7 +27,7 @@ async fn main() -> anyhow::Result<()> {
     let config = warp::any().map(move || config.clone());
 
     let function_call_filter =
-        warp::path!("function" / String)
+        warp::path!("functions" / String)
         .and(config)
         .and_then(function_call_handler);
 
@@ -69,7 +69,8 @@ async fn call_docker_function(name: String, config: Arc<Config>) -> anyhow::Resu
     let container = api.containers().create(container_create_opts).await?;
     container.start().await?;
     container.wait().await?;
+    let logs = container.logs().await?;
     container.delete().await?;
 
-    Ok("TODO: Output result".to_string())
+    Ok(logs)
 }

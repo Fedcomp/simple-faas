@@ -129,4 +129,22 @@ impl Container {
         // TODO: Check body
         Ok(())
     }
+
+    pub async fn logs(&self) -> anyhow::Result<String> {
+        let url = format!("{}/containers/{}/logs?stdout=true", self.client.host(), self.id);
+        let client = reqwest::Client::new();
+        let response = client
+            .get(url)
+            .send()
+            .await?;
+
+        let status = response.status();
+        let body = response.text().await?;
+        if status != 200 {
+            bail!("Failed to get {} container logs: {} ({})", self.id, body, status);
+        }
+    
+        // TODO: Check body
+        Ok(body)
+    }
 }
