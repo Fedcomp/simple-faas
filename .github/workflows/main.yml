@@ -32,4 +32,7 @@ jobs:
           context: .
           file: docker/app/Dockerfile
           tags: fedcomp/simple_faas:latest
+          build-args: |
+            UID=1000
+            GID=1000
           push: true
