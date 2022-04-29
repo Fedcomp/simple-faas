@@ -20,3 +20,11 @@ services:
     image: docker:20.10.9-dind
     privileged: true
     command: ["dockerd", "--host=tcp://0.0.0.0:2375"]
+
+  # Production version of container
+  simple-faas:
+    build:
+      dockerfile: docker/simple-faas/Dockerfile
+      context: .
+    depends_on:
+      - docker

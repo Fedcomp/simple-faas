@@ -30,10 +30,7 @@ jobs:
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         with:
           context: .
-          file: docker/app/Dockerfile
-          build-args: |
-            UID=1000
-            GID=1000
+          file: docker/simple-faas/Dockerfile
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           push: true
