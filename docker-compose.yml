@@ -15,13 +15,8 @@ services:
     volumes:
       - .:/home/vscode/workspace
       - ./cache/cargo-registry:/usr/local/cargo/registry
-      - ./docker/certs:/docker/certs
 
   docker:
     image: docker:20.10.9-dind
     privileged: true
-    environment:
-      DOCKER_TLS_CERTDIR: "/docker/certs"
     command: ["dockerd", "--host=tcp://0.0.0.0:2375"]
-    volumes:
-      - ./docker/certs:/docker/certs
