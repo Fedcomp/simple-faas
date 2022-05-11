@@ -26,5 +26,8 @@ services:
     build:
       dockerfile: docker/simple-faas/Dockerfile
       context: .
+    # For docker client debugging purposes
+    environment:
+      DOCKER_HOST: "tcp://docker:2375"
     depends_on:
       - docker
