@@ -24,6 +24,18 @@ async fn main() -> anyhow::Result<()> {
     let listen_host = config.listen_host;
     debug!("Loaded {} function(s) from config", config.functions.len());
 
+    info!("Pulling function images");
+    for (function_name, function) in config.functions.iter() {
+        debug!(
+            "Pulling function {} from {}",
+            function_name,
+            function.image.clone()
+        );
+
+        pull_image(function.image.clone(), config.clone()).await?;
+    }
+    info!("Successfuly pulled all images");
+
     let config = warp::any().map(move || config.clone());
 
     let function_call_filter =
@@ -36,6 +48,13 @@ async fn main() -> anyhow::Result<()> {
     warp::serve(function_call_filter)
         .run(listen_host)
         .await;
+
+    Ok(())
+}
+
+async fn pull_image(tag: String, config: Arc<Config>) -> anyhow::Result<()> {
+    let api = docker_api(config);
+    api.images().pull(tag).await?;
 
     Ok(())
 }
@@ -60,8 +79,7 @@ async fn function_call_handler(name: String, config: Arc<Config>) -> Result<impl
 }
 
 async fn call_docker_function(name: String, config: Arc<Config>) -> anyhow::Result<String> {
-    let client = DockerClient::new(config.docker_host.clone());
-    let api = DockerApi::new(client);
+    let api = docker_api(config);
     let container_create_opts = ContainerCreateArgs {
         Image: name.clone(),
         Cmd: None,
@@ -73,4 +91,10 @@ async fn call_docker_function(name: String, config: Arc<Config>) -> anyhow::Resu
     container.delete().await?;
 
     Ok(logs)
+}
+
+fn docker_api(config: Arc<Config>) -> DockerApi {
+    let client = DockerClient::new(config.docker_host.clone());
+    let api = DockerApi::new(client);
+    api
 }
