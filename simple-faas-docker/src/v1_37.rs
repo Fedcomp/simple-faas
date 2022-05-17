@@ -1,12 +1,12 @@
 #![allow(non_snake_case)]
 
-use serde::{Deserialize, Serialize};
-use anyhow::bail;
-use url::Url;
 use crate::client::Client;
+use anyhow::bail;
+use serde::{Deserialize, Serialize};
+use url::Url;
 
 pub struct Api {
-    client: Client
+    client: Client,
 }
 
 impl Api {
@@ -15,23 +15,27 @@ impl Api {
     }
 
     pub fn images(&self) -> Images {
-        Images { client: self.client.clone() }
+        Images {
+            client: self.client.clone(),
+        }
     }
 
     pub fn containers(&self) -> Containers {
-        Containers { client: self.client.clone() }
+        Containers {
+            client: self.client.clone(),
+        }
     }
 
     pub fn container(&self, id: String) -> Container {
         Container {
             id,
-            client: self.client.clone()
+            client: self.client.clone(),
         }
     }
 }
 
 pub struct Images {
-    client: Client
+    client: Client,
 }
 
 #[derive(Debug, PartialEq)]
@@ -39,7 +43,7 @@ struct Image {
     domain: String,
     name: String,
     tag: String,
-    digest: Option<String>
+    digest: Option<String>,
 }
 
 impl From<Image> for ImageCreateArgs {
@@ -50,7 +54,7 @@ impl From<Image> for ImageCreateArgs {
 
         Self {
             fromImage: format!("{}/{}", image.domain, image.name),
-            tag: image.tag
+            tag: image.tag,
         }
     }
 }
@@ -72,7 +76,10 @@ fn normalize_image_tag(tag: String) -> anyhow::Result<Image> {
     let image_tag: String;
     if remaining_tag.contains(":") {
         let mut tag_iterator = remaining_tag.rsplit(":");
-        image_tag = tag_iterator.next().map(str::to_owned).expect("String contains ':' for sure");
+        image_tag = tag_iterator
+            .next()
+            .map(str::to_owned)
+            .expect("String contains ':' for sure");
         remaining_tag = tag_iterator.collect();
     } else {
         image_tag = "latest".to_string();
@@ -93,11 +100,11 @@ fn normalize_image_tag(tag: String) -> anyhow::Result<Image> {
     let url = Url::parse(&remaining_tag)?;
     let image_domain = match url.domain() {
         Some(d) => d.to_string(),
-        None => "docker.io".to_string()
+        None => "docker.io".to_string(),
     };
     let mut image_name = match url.path().is_empty() {
         true => bail!("Image name cannot be empty"),
-        false => url.path().to_string()
+        false => url.path().to_string(),
     };
 
     if image_name.starts_with("/") {
@@ -108,7 +115,7 @@ fn normalize_image_tag(tag: String) -> anyhow::Result<Image> {
         domain: image_domain,
         name: image_name,
         tag: image_tag,
-        digest: image_digest
+        digest: image_digest,
     })
 }
 
@@ -120,7 +127,12 @@ pub struct ImageCreateArgs {
 
 impl Images {
     pub async fn create(&self, body: ImageCreateArgs) -> anyhow::Result<()> {
-        let url = format!("{}/images/create?fromImage={}&tag={}", self.client.host(), body.fromImage, body.tag);
+        let url = format!(
+            "{}/images/create?fromImage={}&tag={}",
+            self.client.host(),
+            body.fromImage,
+            body.tag
+        );
         let client = reqwest::Client::new();
         let response = client
             .post(url)
@@ -130,7 +142,11 @@ impl Images {
 
         let status = response.status();
         if status != 200 {
-            bail!("Failed to create image: {} ({})", response.text().await?, status);
+            bail!(
+                "Failed to create image: {} ({})",
+                response.text().await?,
+                status
+            );
         }
 
         Ok(())
@@ -145,7 +161,7 @@ impl Images {
 }
 
 pub struct Containers {
-    client: Client
+    client: Client,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -173,15 +189,20 @@ impl Containers {
 
         let status = response.status();
         if status != 201 {
-            bail!("Failed to create container: {} ({})", response.text().await?, status);
+            bail!(
+                "Failed to create container: {} ({})",
+                response.text().await?,
+                status
+            );
         }
 
         let response_text = response.text().await?;
-        let container_create_response: ContainerCreateResponse = serde_json::from_str(&response_text)?;
+        let container_create_response: ContainerCreateResponse =
+            serde_json::from_str(&response_text)?;
 
         Ok(Container {
             id: container_create_response.Id,
-            client: self.client.clone()
+            client: self.client.clone(),
         })
     }
 }
@@ -189,7 +210,7 @@ impl Containers {
 #[derive(Debug)]
 pub struct Container {
     id: String,
-    client: Client
+    client: Client,
 }
 
 impl Container {
@@ -204,7 +225,11 @@ impl Container {
 
         let status = response.status();
         if status != 204 {
-            bail!("Failed to start container: {} ({})", response.text().await?, status);
+            bail!(
+                "Failed to start container: {} ({})",
+                response.text().await?,
+                status
+            );
         }
 
         // TODO: Check body
@@ -223,7 +248,11 @@ impl Container {
 
         let status = response.status();
         if status != 200 {
-            bail!("Failed to wait for container: {} ({})", response.text().await?, status);
+            bail!(
+                "Failed to wait for container: {} ({})",
+                response.text().await?,
+                status
+            );
         }
 
         // TODO: Check body
@@ -242,7 +271,12 @@ impl Container {
 
         let status = response.status();
         if status != 204 {
-            bail!("Failed to delete {} container: {} ({})", self.id, response.text().await?, status);
+            bail!(
+                "Failed to delete {} container: {} ({})",
+                self.id,
+                response.text().await?,
+                status
+            );
         }
 
         // TODO: Check body
@@ -250,19 +284,25 @@ impl Container {
     }
 
     pub async fn logs(&self) -> anyhow::Result<String> {
-        let url = format!("{}/containers/{}/logs?stdout=true", self.client.host(), self.id);
+        let url = format!(
+            "{}/containers/{}/logs?stdout=true",
+            self.client.host(),
+            self.id
+        );
         let client = reqwest::Client::new();
-        let response = client
-            .get(url)
-            .send()
-            .await?;
+        let response = client.get(url).send().await?;
 
         let status = response.status();
         let body = response.text().await?;
         if status != 200 {
-            bail!("Failed to get {} container logs: {} ({})", self.id, body, status);
+            bail!(
+                "Failed to get {} container logs: {} ({})",
+                self.id,
+                body,
+                status
+            );
         }
-    
+
         // TODO: Check body
         Ok(body)
     }
@@ -270,8 +310,8 @@ impl Container {
 
 #[cfg(test)]
 mod tests {
-    use super::{Image, ImageCreateArgs};
     use super::normalize_image_tag;
+    use super::{Image, ImageCreateArgs};
 
     #[test]
     fn test_normalize_image_tag() {

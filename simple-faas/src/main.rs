@@ -1,15 +1,15 @@
 mod config;
 
+use self::config::Config;
 use env_logger::Env;
 use log::{debug, info};
-use self::config::Config;
-use std::fs::File;
-use warp::Filter;
-use std::sync::Arc;
 use simple_faas_docker::client::Client as DockerClient;
 use simple_faas_docker::v1_37::Api as DockerApi;
 use simple_faas_docker::v1_37::ContainerCreateArgs;
+use std::fs::File;
+use std::sync::Arc;
 use warp::http::Response;
+use warp::Filter;
 
 const DEFAULT_CONFIG_NAME: &str = "config.yml";
 
@@ -38,16 +38,13 @@ async fn main() -> anyhow::Result<()> {
 
     let config = warp::any().map(move || config.clone());
 
-    let function_call_filter =
-        warp::path!("functions" / String)
+    let function_call_filter = warp::path!("functions" / String)
         .and(config)
         .and_then(function_call_handler);
 
     info!("Listening on {:?}", listen_host);
 
-    warp::serve(function_call_filter)
-        .run(listen_host)
-        .await;
+    warp::serve(function_call_filter).run(listen_host).await;
 
     Ok(())
 }
@@ -59,20 +56,19 @@ async fn pull_image(tag: String, config: Arc<Config>) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn function_call_handler(name: String, config: Arc<Config>) -> Result<impl warp::Reply, warp::Rejection> {
+async fn function_call_handler(
+    name: String,
+    config: Arc<Config>,
+) -> Result<impl warp::Reply, warp::Rejection> {
     let response = match call_docker_function(name, config).await {
-        Ok(output) => {
-            Response::builder()
-                .status(200)
-                .body(output)
-                .expect("Failed to construct a response")
-        },
-        Err(e) => {
-            Response::builder()
-                .status(500)
-                .body(format!("Failed to call function: {}", e))
-                .expect("Failed to construct a response")
-        }
+        Ok(output) => Response::builder()
+            .status(200)
+            .body(output)
+            .expect("Failed to construct a response"),
+        Err(e) => Response::builder()
+            .status(500)
+            .body(format!("Failed to call function: {}", e))
+            .expect("Failed to construct a response"),
     };
 
     Ok(response)
