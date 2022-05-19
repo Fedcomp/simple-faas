@@ -12,7 +12,7 @@
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
 		"bungcip.better-toml",
-		"matklad.rust-analyzer",
+		"rust-lang.rust-analyzer",
 	],
 
 	"remoteUser": "vscode"
