@@ -1,41 +1,44 @@
 #![allow(non_snake_case)]
 
+use crate::auth::DockerConfig;
 use crate::client::Client;
 use anyhow::bail;
+use log::debug;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Api {
     client: Client,
+    docker_config: DockerConfig,
 }
 
 impl Api {
-    pub fn new(client: Client) -> Self {
-        Api { client }
+    pub fn new(client: Client, docker_config: DockerConfig) -> Self {
+        Api {
+            client,
+            docker_config,
+        }
     }
 
     pub fn images(&self) -> Images {
-        Images {
-            client: self.client.clone(),
-        }
+        Images { api: self.clone() }
     }
 
     pub fn containers(&self) -> Containers {
-        Containers {
-            client: self.client.clone(),
-        }
+        Containers { api: self.clone() }
     }
 
     pub fn container(&self, id: String) -> Container {
         Container {
             id,
-            client: self.client.clone(),
+            api: self.clone(),
         }
     }
 }
 
 pub struct Images {
-    client: Client,
+    api: Api,
 }
 
 #[derive(Debug, PartialEq)]
@@ -127,19 +130,30 @@ pub struct ImageCreateArgs {
 
 impl Images {
     pub async fn create(&self, body: ImageCreateArgs) -> anyhow::Result<()> {
+        let image = normalize_image_tag(body.fromImage.clone())?;
+        let auth_entry = self.api.docker_config.auths.get(&image.domain);
+
         let url = format!(
             "{}/images/create?fromImage={}&tag={}",
-            self.client.host(),
+            self.api.client.host(),
             body.fromImage,
             body.tag
         );
         let client = reqwest::Client::new();
-        let response = client
-            .post(url)
-            .header("Content-Type", "application/json")
-            .send()
-            .await?;
+        let mut request = client.post(url).header("Content-Type", "application/json");
 
+        if let Some(auth) = auth_entry {
+            debug!(
+                "Providing token auth for domain {} for {}",
+                &image.domain, &body.fromImage
+            );
+            let json = serde_json::to_string(auth)?;
+            let base64 = base64::encode(json);
+
+            request = request.header("X-Registry-Auth", base64);
+        }
+
+        let response = request.send().await?;
         let status = response.status();
         if status != 200 {
             bail!(
@@ -161,7 +175,7 @@ impl Images {
 }
 
 pub struct Containers {
-    client: Client,
+    api: Api,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -177,7 +191,7 @@ pub struct ContainerCreateResponse {
 
 impl Containers {
     pub async fn create(&self, body: ContainerCreateArgs) -> anyhow::Result<Container> {
-        let url = format!("{}/containers/create", self.client.host());
+        let url = format!("{}/containers/create", self.api.client.host());
         let raw_body = serde_json::to_string(&body)?;
         let client = reqwest::Client::new();
         let response = client
@@ -202,7 +216,7 @@ impl Containers {
 
         Ok(Container {
             id: container_create_response.Id,
-            client: self.client.clone(),
+            api: self.api.clone(),
         })
     }
 }
@@ -210,12 +224,12 @@ impl Containers {
 #[derive(Debug)]
 pub struct Container {
     id: String,
-    client: Client,
+    api: Api,
 }
 
 impl Container {
     pub async fn start(&self) -> anyhow::Result<()> {
-        let url = format!("{}/containers/{}/start", self.client.host(), self.id);
+        let url = format!("{}/containers/{}/start", self.api.client.host(), self.id);
         let client = reqwest::Client::new();
         let response = client
             .post(url)
@@ -238,7 +252,7 @@ impl Container {
 
     /// Wait for container to stop
     pub async fn wait(&self) -> anyhow::Result<()> {
-        let url = format!("{}/containers/{}/wait", self.client.host(), self.id);
+        let url = format!("{}/containers/{}/wait", self.api.client.host(), self.id);
         let client = reqwest::Client::new();
         let response = client
             .post(url)
@@ -261,7 +275,7 @@ impl Container {
 
     /// Wait for container to stop
     pub async fn delete(&self) -> anyhow::Result<()> {
-        let url = format!("{}/containers/{}", self.client.host(), self.id);
+        let url = format!("{}/containers/{}", self.api.client.host(), self.id);
         let client = reqwest::Client::new();
         let response = client
             .delete(url)
@@ -286,7 +300,7 @@ impl Container {
     pub async fn logs(&self) -> anyhow::Result<String> {
         let url = format!(
             "{}/containers/{}/logs?stdout=true",
-            self.client.host(),
+            self.api.client.host(),
             self.id
         );
         let client = reqwest::Client::new();

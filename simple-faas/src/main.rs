@@ -6,23 +6,28 @@ use log::{debug, info};
 use simple_faas_docker::client::Client as DockerClient;
 use simple_faas_docker::v1_37::Api as DockerApi;
 use simple_faas_docker::v1_37::ContainerCreateArgs;
-use std::fs::File;
 use std::sync::Arc;
 use warp::http::Response;
 use warp::Filter;
-
-const DEFAULT_CONFIG_NAME: &str = "config.yml";
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> anyhow::Result<()> {
     env_logger::Builder::from_env(Env::default().default_filter_or("trace")).init();
     info!("Starting");
 
-    let config_reader = File::open(DEFAULT_CONFIG_NAME)?;
-    let config: Config = serde_yaml::from_reader(config_reader)?;
+    let config = config::read_default()?;
     let config = Arc::new(config);
     let listen_host = config.listen_host;
     debug!("Loaded {} function(s) from config", config.functions.len());
+    info!(
+        "Loaded auth for next docker registries: {}",
+        config
+            .docker_config
+            .auths
+            .iter()
+            .map(|(host, _auth)| host)
+            .fold(String::new(), |a, b| a + ", " + b)
+    );
 
     info!("Pulling function images");
     for (function_name, function) in config.functions.iter() {
@@ -91,6 +96,6 @@ async fn call_docker_function(name: String, config: Arc<Config>) -> anyhow::Resu
 
 fn docker_api(config: Arc<Config>) -> DockerApi {
     let client = DockerClient::new(config.docker_host.clone());
-    let api = DockerApi::new(client);
+    let api = DockerApi::new(client, config.docker_config.clone());
     api
 }

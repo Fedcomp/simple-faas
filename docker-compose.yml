@@ -15,6 +15,7 @@ services:
     volumes:
       - .:/home/vscode/workspace
       - ./cache/cargo-registry:/usr/local/cargo/registry
+      - $HOME/.docker/config.json:/home/vscode/.docker/config.json:ro
 
   docker:
     image: docker:20.10.9-dind

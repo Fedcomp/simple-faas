@@ -3,4 +3,5 @@ docker_host: "http://docker:2375"
 listen_host: "127.0.0.1:8080"
 functions:
   hello-world:
-    image: hello-world
+    # Just a copy of docker hub hello-world but in private package
+    image: ghcr.io/fedcomp/hello-world:latest
