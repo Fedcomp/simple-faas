@@ -16,7 +16,7 @@ RUN apt-get update
 RUN apt-get install -y docker.io
 RUN groupadd -g 9999 simple-faas
 RUN useradd simple-faas -u 9999 -g 9999 -m -d /opt/simple-faas
-USER simple-faas
+# USER simple-faas
 WORKDIR /opt/simple-faas
 COPY --from=build --chown=simple-faas:simple-faas \
      /opt/simple-faas/target/release/simple-faas /opt/simple-faas/simple-faas
