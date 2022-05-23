@@ -5,3 +5,5 @@ functions:
   hello-world:
     # Just a copy of docker hub hello-world but in private package
     image: ghcr.io/fedcomp/hello-world:latest
+  stdin-reverse:
+    image: ghcr.io/fedcomp/stdin-reverse-echo:master

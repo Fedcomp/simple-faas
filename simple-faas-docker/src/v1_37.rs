@@ -6,6 +6,7 @@ use anyhow::bail;
 use log::debug;
 use serde::{Deserialize, Serialize};
 use url::Url;
+use tokio::io::AsyncWriteExt;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Api {
@@ -182,6 +183,9 @@ pub struct Containers {
 pub struct ContainerCreateArgs {
     pub Image: String,
     pub Cmd: Option<String>,
+    pub AttachStdin: bool,
+    pub OpenStdin: bool,
+    pub Tty: bool,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -227,6 +231,12 @@ pub struct Container {
     api: Api,
 }
 
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct ContainerAttachArgs {
+    pub stream: bool,
+    pub stdin: bool,
+}
+
 impl Container {
     pub async fn start(&self) -> anyhow::Result<()> {
         let url = format!("{}/containers/{}/start", self.api.client.host(), self.id);
@@ -241,6 +251,28 @@ impl Container {
         if status != 204 {
             bail!(
                 "Failed to start container: {} ({})",
+                response.text().await?,
+                status
+            );
+        }
+
+        // TODO: Check body
+        Ok(())
+    }
+
+    pub async fn pause(&self) -> anyhow::Result<()> {
+        let url = format!("{}/containers/{}/pause", self.api.client.host(), self.id);
+        let client = reqwest::Client::new();
+        let response = client
+            .post(url)
+            .header("Content-Type", "application/json")
+            .send()
+            .await?;
+
+        let status = response.status();
+        if status != 204 {
+            bail!(
+                "Failed to pause container: {} ({})",
                 response.text().await?,
                 status
             );
@@ -275,7 +307,7 @@ impl Container {
 
     /// Wait for container to stop
     pub async fn delete(&self) -> anyhow::Result<()> {
-        let url = format!("{}/containers/{}", self.api.client.host(), self.id);
+        let url = format!("{}/containers/{}?force=1", self.api.client.host(), self.id);
         let client = reqwest::Client::new();
         let response = client
             .delete(url)
@@ -319,6 +351,44 @@ impl Container {
 
         // TODO: Check body
         Ok(body)
+    }
+
+    pub async fn send_to_stdin(&self, input: String) -> anyhow::Result<()> {
+        let url = format!("{}/v1.37/containers/{}/attach?stream=1&stdin=1&stdout=1&stderr=1&logs=1", self.api.client.host(), self.id);
+        dbg!(&url);
+        let client = hyper::Client::new();
+        let request = hyper::Request::builder()
+            .method("POST")
+            .uri(url)
+            .header(hyper::header::UPGRADE, "tcp")
+            .body(hyper::Body::empty())
+            .unwrap();
+
+        debug!("Attach request to docker container");
+        let response = client
+            .request(request)
+            .await?;
+
+        let status = response.status();
+        // TODO: Check body
+        if status != 101 {
+            let body_bytes = hyper::body::to_bytes(response.into_body()).await?;
+            let string_body = String::from_utf8_lossy(&body_bytes);
+
+            bail!(
+                "Failed to send stdin input to container: {:?} ({})",
+                string_body,
+                status
+            );
+        }
+
+        debug!("Upgrading connection to tcp");
+        let mut upgraded_stream = hyper::upgrade::on(response).await?;
+        debug!("Sending stdin input to docker container");
+        upgraded_stream.write_all(input.as_bytes()).await?;
+        debug!("Stdin input sent");
+
+        Ok(())
     }
 }
 
