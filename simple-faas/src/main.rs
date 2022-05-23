@@ -14,7 +14,7 @@ use bytes::Bytes;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> anyhow::Result<()> {
-    env_logger::Builder::from_env(Env::default().default_filter_or("trace")).init();
+    env_logger::Builder::from_env(Env::default().default_filter_or("simple_faas=trace")).init();
     info!("Starting");
 
     let config = config::read_default()?;
@@ -77,10 +77,7 @@ async fn function_call_handler(
         .find(move |(f_name, _f_data)| *f_name == &iter_name)
         .map(|(_name, data)| data);
 
-
     debug!("API INPUT CHECK");
-    dbg!(&body);
-    let body = String::from_utf8_lossy(&body).to_string();
     dbg!(&body);
     let input = match body.is_empty() {
         true => None,
@@ -107,7 +104,7 @@ async fn function_call_handler(
     Ok(response)
 }
 
-async fn call_docker_function(name: String, input: Option<String>, config: Arc<Config>) -> anyhow::Result<String> {
+async fn call_docker_function(name: String, input: Option<Bytes>, config: Arc<Config>) -> anyhow::Result<String> {
     let api = docker_api(config);
     let container_create_opts = ContainerCreateArgs {
         Image: name.clone(),

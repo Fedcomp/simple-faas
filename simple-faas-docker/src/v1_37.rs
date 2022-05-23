@@ -7,6 +7,7 @@ use log::debug;
 use serde::{Deserialize, Serialize};
 use url::Url;
 use tokio::io::AsyncWriteExt;
+use bytes::Bytes;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Api {
@@ -353,7 +354,7 @@ impl Container {
         Ok(body)
     }
 
-    pub async fn send_to_stdin(&self, input: String) -> anyhow::Result<()> {
+    pub async fn send_to_stdin(&self, input: Bytes) -> anyhow::Result<()> {
         let url = format!("{}/v1.37/containers/{}/attach?stream=1&stdin=1&stdout=1&stderr=1&logs=1", self.api.client.host(), self.id);
         dbg!(&url);
         let client = hyper::Client::new();
@@ -385,7 +386,7 @@ impl Container {
         debug!("Upgrading connection to tcp");
         let mut upgraded_stream = hyper::upgrade::on(response).await?;
         debug!("Sending stdin input to docker container");
-        upgraded_stream.write_all(input.as_bytes()).await?;
+        upgraded_stream.write_all(&input).await?;
         debug!("Stdin input sent");
 
         Ok(())
